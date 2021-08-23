@@ -13,7 +13,10 @@ EXTRA_CFLAGS += -Wno-unused-variable
 #EXTRA_CFLAGS += -Wno-unused-parameter
 #EXTRA_CFLAGS += -Wno-unused-function
 EXTRA_CFLAGS += -Wno-unused
-#EXTRA_CFLAGS += -Wno-uninitialized
+EXTRA_CFLAGS += -Wno-uninitialized
+EXTRA_CFLAGS += -Wno-parentheses-equality
+EXTRA_CFLAGS += -Wno-pointer-bool-conversion
+EXTRA_CFLAGS += -Wno-self-assign
 
 GCC_VER_49 := $(shell echo `$(CC) -dumpversion | cut -f1-2 -d.` \>= 4.9 | bc )
 ifeq ($(GCC_VER_49),1)
@@ -2157,9 +2160,9 @@ endif
 ARCH ?= arm64
 CROSS_COMPILE ?= /4.4_S905L_8822bs_compile/gcc-linaro-aarch64-linux-gnu-4.9-2014.09_linux/bin/aarch64-linux-gnu-
 ifndef KSRC
-KSRC := /4.4_S905L_8822bs_compile/common
-# To locate output files in a separate directory.
-KSRC += O=/4.4_S905L_8822bs_compile/KERNEL_OBJ
+EXTRA_CFLAGS += -w
+KSRC := $(KERNEL_SRC)
+EXTRA_CFLAGS += $(foreach d,$(shell find $(shell cd $(KERNEL_SRC)/$(M);pwd) -type d),$(shell echo " -I$(d)"))
 endif
 
 ifeq ($(CONFIG_RTL8822B), y)
@@ -2324,7 +2327,12 @@ export CONFIG_RTL8821CS = m
 all: modules
 
 modules:
-	$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -C $(KSRC) M=$(shell pwd)  modules
+	$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -C $(KSRC) M=$(M)  modules
+
+modules_install:
+	@$(MAKE) INSTALL_MOD_STRIP=1 M=$(M) -C $(KSRC) modules_install
+	mkdir -p ${OUT_DIR}/../vendor_lib/modules
+	cd ${OUT_DIR}/$(M)/; find -name $(MODULE_NAME).ko -exec cp {} ${OUT_DIR}/../vendor_lib/modules/8821cs.ko \;
 
 strip:
 	$(CROSS_COMPILE)strip $(MODULE_NAME).ko --strip-unneeded
